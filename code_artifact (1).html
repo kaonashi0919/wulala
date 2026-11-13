@@ -1,0 +1,1484 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>離線銷售資料清理與視覺化工具</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-muted: #f1f5f9;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-soft: #eff6ff;
+      --success: #059669;
+      --success-soft: #ecfdf5;
+      --warning: #d97706;
+      --warning-soft: #fffbeb;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --radius: 12px;
+      --shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --surface-muted: #334155;
+        --border: #334155;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --primary: #3b82f6;
+        --primary-hover: #60a5fa;
+        --primary-soft: rgba(59, 130, 246, 0.15);
+        --success: #10b981;
+        --success-soft: rgba(16, 185, 129, 0.15);
+        --warning: #f59e0b;
+        --warning-soft: rgba(245, 158, 11, 0.15);
+        --danger: #ef4444;
+        --danger-soft: rgba(239, 68, 68, 0.15);
+        --shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .title-group h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .title-group p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .upload-panel {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .upload-panel.dragover {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .upload-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+      color: var(--text-main);
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      filter: brightness(0.95);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .alert-box {
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      font-size: 0.92rem;
+      display: none;
+    }
+
+    .alert-box.error {
+      display: block;
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+
+    .alert-box.info {
+      display: block;
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .kpi-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .kpi-value {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .kpi-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .canvas-wrapper {
+      width: 100%;
+      height: 320px;
+      position: relative;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .audit-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .audit-item {
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+
+    .audit-item.exclude {
+      background: var(--danger-soft);
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    .audit-item.keep {
+      background: var(--success-soft);
+      border-color: rgba(5, 150, 105, 0.3);
+    }
+
+    .audit-item.pending {
+      background: var(--warning-soft);
+      border-color: rgba(217, 119, 6, 0.3);
+    }
+
+    .audit-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .audit-count {
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+
+    .audit-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .limitation-box {
+      background: var(--surface-muted);
+      border-left: 4px solid var(--warning);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+    }
+
+    .limitation-box h4 {
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+      color: var(--text-main);
+    }
+
+    .limitation-box ul {
+      padding-left: 20px;
+      color: var(--text-muted);
+    }
+
+    .limitation-box li {
+      margin-bottom: 4px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      background: var(--surface-muted);
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .pill-keep { background: var(--success-soft); color: var(--success); }
+    .pill-exclude { background: var(--danger-soft); color: var(--danger); }
+    .pill-pending { background: var(--warning-soft); color: var(--warning); }
+
+    @media (max-width: 640px) {
+      body { padding: 12px; }
+      .canvas-wrapper { height: 260px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>離線銷售資料清理與視覺化工具</h1>
+        <p>自動辨識 24 個月彙總資料或 4 月交易明細，依資料字典執行清理與圖表呈現（兩者獨立分析、不相加）</p>
+      </div>
+      <span class="badge" id="detected-badge">尚未載入檔案</span>
+    </header>
+
+    <!-- 檔案上傳與內建範例區 -->
+    <div class="upload-panel" id="drop-zone">
+      <p style="font-weight: 600; font-size: 1.05rem;">請選擇 CSV 檔案，或將檔案拖曳至此處</p>
+      <p style="font-size: 0.86rem; color: var(--text-muted); margin-top: 4px;">
+        支援格式：<code>sales-24-months.csv</code>（欄位：month, revenue, orders）或 <code>sales-raw-transactions.csv</code>（欄位：transaction_id, date, region, amount, status）
+      </p>
+      <div class="upload-actions">
+        <label class="btn btn-primary" for="csv-file-input">選擇本機 CSV 檔案</label>
+        <input type="file" id="csv-file-input" accept=".csv,text/csv" />
+        <button type="button" class="btn" id="btn-sample-24m">載入內建範例：24 個月彙總</button>
+        <button type="button" class="btn" id="btn-sample-tx">載入內建範例：4 月交易明細</button>
+      </div>
+    </div>
+
+    <div class="alert-box" id="message-box"></div>
+
+    <!-- 模式 A：24 個月彙總資料視圖 -->
+    <div class="section" id="view-24m">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">總營收（新台幣元）</div>
+          <div class="kpi-value" id="kpi-24m-rev">-</div>
+          <div class="kpi-sub" id="kpi-24m-range">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">總訂單數</div>
+          <div class="kpi-value" id="kpi-24m-orders">-</div>
+          <div class="kpi-sub">跨期累計訂單筆數</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">加權客單價（總營收 ÷ 總訂單）</div>
+          <div class="kpi-value" id="kpi-24m-aov">-</div>
+          <div class="kpi-sub">依訂單數加權平均</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">最新月份年增率（YoY）</div>
+          <div class="kpi-value" id="kpi-24m-yoy">-</div>
+          <div class="kpi-sub" id="kpi-24m-yoy-sub">-</div>
+        </div>
+      </div>
+
+      <div class="card">
+      <div class="card-header">
+        <div class="card-title">月營收趨勢圖（新台幣元）</div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <button type="button" class="btn" id="btn-download-24m" style="padding: 6px 12px; font-size: 0.82rem;">下載去背圖表 (PNG)</button>
+          <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            主色系：<input type="color" id="color-picker-24m" value="#2563eb" style="width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; background: transparent;" />
+          </label>
+          <span style="font-size: 0.82rem; color: var(--text-muted);" id="chart-hint">滑鼠移至圖表節點或下方表格可同步高亮檢視</span>
+        </div>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="canvas-24m"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+          <div class="card-title">各月份明細與年增率（YoY）計算表</div>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">游標移至任一列可即時於上方趨勢圖聯動顯現</span>
+        </div>
+        <div class="table-wrap" style="max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+          <table>
+            <thead>
+              <tr style="position: sticky; top: 0; z-index: 10;">
+                <th>月份 (month)</th>
+                <th class="num">月營收 (revenue)</th>
+                <th class="num">訂單數 (orders)</th>
+                <th class="num">單月客單價</th>
+                <th class="num">去年同月營收</th>
+                <th class="num">年增率 (YoY)</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-24m"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模式 B：4 月交易明細視圖 -->
+    <div class="section" id="view-tx">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">清理後有效總筆數</div>
+          <div class="kpi-value" id="kpi-tx-valid-count">-</div>
+          <div class="kpi-sub" id="kpi-tx-raw-count">-</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">清理後總淨額（新台幣元）</div>
+          <div class="kpi-value" id="kpi-tx-net-amount">-</div>
+          <div class="kpi-sub">已納入負值退款，排除重複、取消與待查</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">有效交易平均淨額</div>
+          <div class="kpi-value" id="kpi-tx-avg-amount">-</div>
+          <div class="kpi-sub">清理後淨額 ÷ 有效筆數</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">異常排除與待查金額</div>
+          <div class="kpi-value" id="kpi-tx-excluded-amount">-</div>
+          <div class="kpi-sub">未計入當期淨額之重複、取消與缺日期金額</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">清理後各區域淨額長條圖（新台幣元）</div>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <button type="button" class="btn" id="btn-download-tx" style="padding: 6px 12px; font-size: 0.82rem;">下載去背圖表 (PNG)</button>
+            <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              柱體配色：<input type="color" id="color-picker-tx" value="#2563eb" style="width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; background: transparent;" />
+            </label>
+            <span style="font-size: 0.82rem; color: var(--text-muted);">依 region 原值分組，游標移至下方表格可高亮柱體</span>
+          </div>
+        </div>
+        <div class="canvas-wrapper">
+          <canvas id="canvas-tx"></canvas>
+        </div>
+
+        <!-- 圖表下方：異常處理數量與資料限制 -->
+        <div style="margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border);">
+          <h3 style="font-size: 1rem; margin-bottom: 12px;">資料清理處置數量統計（依資料字典）</h3>
+          <div class="audit-grid">
+            <div class="audit-item exclude">
+              <span class="audit-tag" style="color: var(--danger);">排除（不加總）</span>
+              <div class="audit-count" id="audit-dup-count">0 筆</div>
+              <div class="audit-desc">重複 transaction_id（僅留首筆）</div>
+            </div>
+            <div class="audit-item exclude">
+              <span class="audit-tag" style="color: var(--danger);">排除（不計營收）</span>
+              <div class="audit-count" id="audit-cancel-count">0 筆</div>
+              <div class="audit-desc">狀態為 CANCELLED 之交易</div>
+            </div>
+            <div class="audit-item keep">
+              <span class="audit-tag" style="color: var(--success);">保留（納入負值）</span>
+              <div class="audit-count" id="audit-refund-count">0 筆</div>
+              <div class="audit-desc">狀態為 REFUND（以負數扣減淨額）</div>
+            </div>
+            <div class="audit-item pending">
+              <span class="audit-tag" style="color: var(--warning);">待查（暫不計入）</span>
+              <div class="audit-count" id="audit-missing-date-count">0 筆</div>
+              <div class="audit-desc">date 為空白（不得猜補）</div>
+            </div>
+          </div>
+
+          <div class="limitation-box">
+            <h4>資料限制說明</h4>
+            <ul>
+              <li><strong>不得與 24 個月彙總表相加：</strong>本交易明細僅涵蓋特定區間（如 2026-04-01 至 2026-04-10 之局部匯出），且 24 個月彙總表已包含 2026-04 全月數據，兩者口徑與時間範圍不同，嚴禁相加。</li>
+              <li><strong>待查資料暫未入帳：</strong>空白日期（<code>date</code> 為空）依規則放入待查表，不猜補日期且暫不計入區域淨額；若後續補齊有效日期，區域淨額與筆數將會變動。</li>
+              <li><strong>缺乏業務成因與關聯欄位：</strong>明細未提供退貨原因、取消原因或原訂單關聯編號（如退款對應之原始交易），無法從本檔判斷異常發生的業務根因。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">清理後各區域有效筆數與淨額彙總</div>
+        </div>
+        <div class="table-wrap" style="max-height: 360px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+          <table>
+            <thead>
+              <tr style="position: sticky; top: 0; z-index: 10;">
+                <th>區域 (region)</th>
+                <th class="num">有效筆數</th>
+                <th class="num">清理後淨額（元）</th>
+                <th class="num">淨額佔比</th>
+                <th>納入計算之交易編號</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-tx-region"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">逐筆稽核與清理紀錄表</div>
+        </div>
+        <div class="table-wrap" style="max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+          <table>
+            <thead>
+              <tr style="position: sticky; top: 0; z-index: 10;">
+                <th>原始列</th>
+                <th>交易編號 (transaction_id)</th>
+                <th>交易日 (date)</th>
+                <th>區域 (region)</th>
+                <th class="num">金額 (amount)</th>
+                <th>Status (狀態)</th>
+                <th>清理處置</th>
+                <th>判定理由（對應資料字典）</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-tx-audit"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 內建範例資料（方便使用者無需手動找檔案即可測試）
+    const SAMPLE_24M_CSV = `month,revenue,orders
+2024-05,120000,60
+2024-06,125700,63
+2024-07,131400,66
+2024-08,137100,66
+2024-09,138000,69
+2024-10,143700,72
+2024-11,149400,72
+2024-12,155100,75
+2025-01,156000,78
+2025-02,161700,78
+2025-03,167400,81
+2025-04,173100,84
+2025-05,174000,84
+2025-06,179700,87
+2025-07,185400,90
+2025-08,191100,90
+2025-09,192000,93
+2025-10,197700,96
+2025-11,203400,96
+2025-12,209100,99
+2026-01,210000,102
+2026-02,215700,102
+2026-03,221400,105
+2026-04,227100,108`;
+
+    const SAMPLE_TX_CSV = `transaction_id,date,region,amount,status
+TX-001,2026-04-01,North,1200,SALE
+TX-002,2026-04-02,South,800,SALE
+TX-003,2026-04-03,North,500,SALE
+TX-003,2026-04-03,North,500,SALE
+TX-005,2026-04-04,West,1500,SALE
+TX-006,,South,600,SALE
+TX-007,2026-04-05,North,-200,REFUND
+TX-008,2026-04-05,East,700,SALE
+TX-009,2026-04-06,South,900,CANCELLED
+TX-010,2026-04-07,West,1100,SALE
+TX-011,2026-04-08,East,400,SALE
+TX-012,2026-04-09,South,650,SALE
+TX-013,2026-04-10,North,300,SALE`;
+
+    let currentState = {
+      type: null,
+      data: null,
+      activeHoverIndex: null,
+      customColor24m: '#2563eb',
+      customColorTx: '#2563eb'
+    };
+
+    // 數字格式化工具
+    function formatCurrency(num) {
+      return Number(num).toLocaleString('zh-TW', { maximumFractionDigits: 0 }) + ' 元';
+    }
+    function formatNumber(num) {
+      return Number(num).toLocaleString('zh-TW', { maximumFractionDigits: 1 });
+    }
+
+    function showMessage(text, type = 'info') {
+      const box = document.getElementById('message-box');
+      box.textContent = text;
+      box.className = 'alert-box ' + type;
+    }
+
+    function clearMessage() {
+      const box = document.getElementById('message-box');
+      box.className = 'alert-box';
+      box.textContent = '';
+    }
+
+    // 輕量級 CSV 解析器（支援引號與空欄位）
+    function parseCSV(text) {
+      const cleanText = text.replace(/^\uFEFF/, '').trim();
+      if (!cleanText) return { headers: [], rows: [] };
+
+      const lines = cleanText.split(/\r?\n/).filter(line => line.trim() !== '');
+      const parseLine = (line) => {
+        const result = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === ',' && !inQuotes) {
+            result.push(cur.trim());
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        result.push(cur.trim());
+        return result;
+      };
+
+      const headers = parseLine(lines[0]).map(h => h.toLowerCase());
+      const rows = lines.slice(1).map((line, idx) => {
+        const values = parseLine(line);
+        const obj = { _rowNumber: idx + 2 };
+        headers.forEach((h, i) => {
+          obj[h] = values[i] !== undefined ? values[i] : '';
+        });
+        return obj;
+      });
+
+      return { headers, rows };
+    }
+
+    // 辨識資料類型並分流處理
+    function processCSVText(text, fileName = '上傳檔案') {
+      try {
+        clearMessage();
+        const { headers, rows } = parseCSV(text);
+
+        if (headers.length === 0 || rows.length === 0) {
+          showMessage('CSV 檔案內容為空或格式無法解析，請確認檔案是否包含標題列與資料列。', 'error');
+          return;
+        }
+
+        const is24M = ['month', 'revenue', 'orders'].every(col => headers.includes(col));
+        const isTx = ['transaction_id', 'date', 'region', 'amount', 'status'].every(col => headers.includes(col));
+
+        if (is24M) {
+          document.getElementById('detected-badge').textContent = `已辨識：24 個月彙總資料（${fileName}）`;
+          analyze24Months(rows);
+        } else if (isTx) {
+          document.getElementById('detected-badge').textContent = `已辨識：交易明細資料（${fileName}）`;
+          analyzeTransactions(rows);
+        } else {
+          document.getElementById('detected-badge').textContent = '無法辨識的欄位結構';
+          showMessage(
+            `無法辨識此 CSV 結構（偵測到欄位：${headers.join(', ')}）。請提供包含 [month, revenue, orders] 或 [transaction_id, date, region, amount, status] 的檔案。`,
+            'error'
+          );
+        }
+      } catch (err) {
+        showMessage('解析檔案時發生錯誤：' + err.message, 'error');
+      }
+    }
+
+    // ==========================================
+    // 模式 A：24 個月彙總資料分析邏輯
+    // ==========================================
+    function analyze24Months(rows) {
+      document.getElementById('view-tx').classList.remove('active');
+      document.getElementById('view-24m').classList.add('active');
+
+      const sorted = rows
+        .map(r => ({
+          month: r.month,
+          revenue: Number(r.revenue) || 0,
+          orders: Number(r.orders) || 0
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+      const monthMap = new Map();
+      sorted.forEach(item => monthMap.set(item.month, item));
+
+      let totalRevenue = 0;
+      let totalOrders = 0;
+
+      const enriched = sorted.map(item => {
+        totalRevenue += item.revenue;
+        totalOrders += item.orders;
+
+        const parts = item.month.split('-');
+        let prevMonthKey = null;
+        if (parts.length === 2) {
+          const prevYear = Number(parts[0]) - 1;
+          prevMonthKey = `${prevYear}-${parts[1]}`;
+        }
+
+        const prevItem = prevMonthKey ? monthMap.get(prevMonthKey) : null;
+        let yoyText = '缺前一年資料';
+        let yoyValue = null;
+        let prevRevenueText = '-';
+
+        if (prevItem && prevItem.revenue !== 0) {
+          yoyValue = ((item.revenue - prevItem.revenue) / prevItem.revenue) * 100;
+          const sign = yoyValue >= 0 ? '+' : '';
+          yoyText = `${sign}${yoyValue.toFixed(1)}%`;
+          prevRevenueText = formatCurrency(prevItem.revenue);
+        }
+
+        const aov = item.orders > 0 ? item.revenue / item.orders : 0;
+
+        return {
+          ...item,
+          aov,
+          prevRevenueText,
+          yoyValue,
+          yoyText
+        };
+      });
+
+      const weightedAOV = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      const latest = enriched[enriched.length - 1];
+
+      document.getElementById('kpi-24m-rev').textContent = formatCurrency(totalRevenue);
+      document.getElementById('kpi-24m-range').textContent = `期間：${enriched[0].month} 至 ${latest.month}（共 ${enriched.length} 個月）`;
+      document.getElementById('kpi-24m-orders').textContent = `${totalOrders.toLocaleString('zh-TW')} 筆`;
+      document.getElementById('kpi-24m-aov').textContent = `${Math.round(weightedAOV).toLocaleString('zh-TW')} 元`;
+      document.getElementById('kpi-24m-yoy').textContent = latest.yoyText;
+      document.getElementById('kpi-24m-yoy-sub').textContent = `基準月份：${latest.month}`;
+
+      currentState.type = '24m';
+      currentState.data = enriched;
+      currentState.activeHoverIndex = null;
+
+      render24MTable(enriched);
+      draw24MChart(enriched, null);
+    }
+
+    function render24MTable(enriched) {
+      const tbody = document.getElementById('tbody-24m');
+      tbody.innerHTML = enriched.map((item, idx) => `
+        <tr data-index="${idx}" style="cursor: pointer; transition: background-color 0.15s;">
+          <td><strong>${item.month}</strong></td>
+          <td class="num">${formatCurrency(item.revenue)}</td>
+          <td class="num">${item.orders.toLocaleString('zh-TW')}</td>
+          <td class="num">${Math.round(item.aov).toLocaleString('zh-TW')} 元</td>
+          <td class="num" style="color: var(--text-muted);">${item.prevRevenueText}</td>
+          <td class="num" style="font-weight: 600; color: ${item.yoyValue === null ? 'var(--text-muted)' : (item.yoyValue >= 0 ? 'var(--success)' : 'var(--danger)')};">
+            ${item.yoyText}
+          </td>
+        </tr>
+      `).join('');
+
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach(row => {
+        const idx = Number(row.getAttribute('data-index'));
+        row.addEventListener('mouseenter', () => {
+          row.style.backgroundColor = 'var(--primary-soft)';
+          currentState.activeHoverIndex = idx;
+          draw24MChart(currentState.data, idx);
+        });
+        row.addEventListener('mouseleave', () => {
+          row.style.backgroundColor = '';
+          currentState.activeHoverIndex = null;
+          draw24MChart(currentState.data, null);
+        });
+      });
+    }
+
+    // ==========================================
+    // 模式 B：4 月交易明細清理與分析邏輯
+    // ==========================================
+    function analyzeTransactions(rows) {
+      document.getElementById('view-24m').classList.remove('active');
+      document.getElementById('view-tx').classList.add('active');
+
+      const seenIds = new Set();
+      let dupCount = 0;
+      let cancelCount = 0;
+      let refundCount = 0;
+      let missingDateCount = 0;
+      let excludedOrPendingAmount = 0;
+
+      const validRecords = [];
+      const auditRecords = [];
+
+      rows.forEach(row => {
+        const txId = (row.transaction_id || '').trim();
+        const dateStr = (row.date || '').trim();
+        const region = (row.region || '').trim();
+        const amount = Number(row.amount);
+        const status = (row.status || '').trim().toUpperCase();
+
+        let action = '';
+        let pillClass = '';
+        let reason = '';
+
+        if (seenIds.has(txId)) {
+          dupCount++;
+          excludedOrPendingAmount += amount;
+          action = '排除（重複列）';
+          pillClass = 'pill-exclude';
+          reason = '【transaction_id 規則】重複 ID 只保留第一筆；把重複列另記在清理紀錄，不加總。';
+        } else {
+          seenIds.add(txId);
+
+          if (status === 'CANCELLED') {
+            cancelCount++;
+            excludedOrPendingAmount += amount;
+            action = '排除（取消）';
+            pillClass = 'pill-exclude';
+            reason = '【status 規則】取消（CANCELLED）不計營收。';
+          } else if (!dateStr) {
+            missingDateCount++;
+            excludedOrPendingAmount += amount;
+            action = '待查（缺日期）';
+            pillClass = 'pill-pending';
+            reason = '【date 規則】空白日期不得猜補；先放入待查，暫不計入彙總與趨勢。';
+          } else if (status === 'REFUND' || status === 'SALE') {
+            if (status === 'REFUND') {
+              refundCount++;
+              const signedAmount = amount > 0 ? -amount : amount;
+              action = '保留（退款負值）';
+              pillClass = 'pill-keep';
+              reason = '【amount & status 規則】退款為負數，納入淨營收；不可改成正數。';
+              validRecords.push({ txId, dateStr, region, amount: signedAmount, status });
+            } else {
+              action = '保留（有效銷售）';
+              pillClass = 'pill-keep';
+              reason = '【status 規則】SALE 狀態且日期完整、無重複，納入有效淨營收。';
+              validRecords.push({ txId, dateStr, region, amount, status });
+            }
+          } else {
+            action = '待查（未知狀態）';
+            pillClass = 'pill-pending';
+            reason = `未定義之狀態值：${status}`;
+          }
+        }
+
+        auditRecords.push({
+          rowNumber: row._rowNumber,
+          txId,
+          dateStr: dateStr || '（空白）',
+          region,
+          amount,
+          status,
+          action,
+          pillClass,
+          reason
+        });
+      });
+
+      const regionMap = new Map();
+      let totalValidCount = 0;
+      let totalNetAmount = 0;
+
+      validRecords.forEach(rec => {
+        totalValidCount++;
+        totalNetAmount += rec.amount;
+        if (!regionMap.has(rec.region)) {
+          regionMap.set(rec.region, {
+            region: rec.region,
+            count: 0,
+            netAmount: 0,
+            txList: []
+          });
+        }
+        const entry = regionMap.get(rec.region);
+        entry.count++;
+        entry.netAmount += rec.amount;
+        entry.txList.push(`${rec.txId}(${rec.amount >= 0 ? '+' : ''}${rec.amount})`);
+      });
+
+      const regionSummary = Array.from(regionMap.values()).sort((a, b) => b.netAmount - a.netAmount);
+
+      document.getElementById('kpi-tx-valid-count').textContent = `${totalValidCount} 筆`;
+      document.getElementById('kpi-tx-raw-count').textContent = `原始匯出共 ${rows.length} 列`;
+      document.getElementById('kpi-tx-net-amount').textContent = formatCurrency(totalNetAmount);
+      const avgNet = totalValidCount > 0 ? Math.round(totalNetAmount / totalValidCount) : 0;
+      document.getElementById('kpi-tx-avg-amount').textContent = formatCurrency(avgNet);
+      document.getElementById('kpi-tx-excluded-amount').textContent = formatCurrency(excludedOrPendingAmount);
+
+      document.getElementById('audit-dup-count').textContent = `${dupCount} 筆`;
+      document.getElementById('audit-cancel-count').textContent = `${cancelCount} 筆`;
+      document.getElementById('audit-refund-count').textContent = `${refundCount} 筆`;
+      document.getElementById('audit-missing-date-count').textContent = `${missingDateCount} 筆`;
+
+      renderTxRegionTable(regionSummary);
+
+      const tbodyAudit = document.getElementById('tbody-tx-audit');
+      tbodyAudit.innerHTML = auditRecords.map(item => `
+        <tr>
+          <td>第 ${item.rowNumber} 列</td>
+          <td><strong>${item.txId}</strong></td>
+          <td style="color: ${item.dateStr === '（空白）' ? 'var(--warning)' : 'inherit'}; font-weight: ${item.dateStr === '（空白）' ? '700' : '400'};">${item.dateStr}</td>
+          <td>${item.region}</td>
+          <td class="num">${item.amount.toLocaleString('zh-TW')}</td>
+          <td>${item.status}</td>
+          <td><span class="pill ${item.pillClass}">${item.action}</span></td>
+          <td style="white-space: normal; min-width: 240px; color: var(--text-muted);">${item.reason}</td>
+        </tr>
+      `).join('');
+
+      currentState.type = 'tx';
+      currentState.data = regionSummary;
+      currentState.activeHoverIndex = null;
+
+      drawTxBarChart(regionSummary, null);
+    }
+
+    function renderTxRegionTable(regionSummary) {
+      const totalNetAmount = regionSummary.reduce((acc, r) => acc + r.netAmount, 0);
+      const totalValidCount = regionSummary.reduce((acc, r) => acc + r.count, 0);
+
+      const tbodyRegion = document.getElementById('tbody-tx-region');
+      tbodyRegion.innerHTML = regionSummary.map((r, idx) => `
+        <tr data-index="${idx}" style="cursor: pointer; transition: background-color 0.15s;">
+          <td><strong>${r.region}</strong></td>
+          <td class="num">${r.count}</td>
+          <td class="num" style="font-weight: 700;">${formatCurrency(r.netAmount)}</td>
+          <td class="num">${totalNetAmount !== 0 ? ((r.netAmount / totalNetAmount) * 100).toFixed(1) + '%' : '-'}</td>
+          <td style="color: var(--text-muted); font-size: 0.82rem;">${r.txList.join('、')}</td>
+        </tr>
+      `).join('') + `
+        <tr style="background: var(--surface-muted); font-weight: 700;">
+          <td>總計</td>
+          <td class="num">${totalValidCount}</td>
+          <td class="num">${formatCurrency(totalNetAmount)}</td>
+          <td class="num">100.0%</td>
+          <td>-</td>
+        </tr>
+      `;
+
+      const rows = tbodyRegion.querySelectorAll('tr[data-index]');
+      rows.forEach(row => {
+        const idx = Number(row.getAttribute('data-index'));
+        row.addEventListener('mouseenter', () => {
+          row.style.backgroundColor = 'var(--primary-soft)';
+          currentState.activeHoverIndex = idx;
+          drawTxBarChart(currentState.data, idx);
+        });
+        row.addEventListener('mouseleave', () => {
+          row.style.backgroundColor = '';
+          currentState.activeHoverIndex = null;
+          drawTxBarChart(currentState.data, null);
+        });
+      });
+    }
+
+    // ==========================================
+    // 繪圖核心（支援自訂顏色與滑鼠高亮聯動）
+    // ==========================================
+    function getThemeColors() {
+      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return {
+        text: isDark ? '#cbd5e1' : '#334155',
+        muted: isDark ? '#94a3b8' : '#64748b',
+        grid: isDark ? '#334155' : '#e2e8f0',
+        highlight: isDark ? '#f59e0b' : '#d97706',
+      };
+    }
+
+    function setupCanvas(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      return { ctx, width: rect.width, height: rect.height };
+    }
+
+    // 專門用於匯出去背透明 PNG 的畫布產生函式（不受深淺色背景與 CSS 影響）
+    function createExportCanvas(width = 1200, height = 630) {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      // 不填充背景顏色，保持完全透明（去背）
+      return { canvas, ctx, width, height };
+    }
+
+    function hexToRgba(hex, alpha) {
+      let c = hex.replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+    }
+
+    function draw24MChart(data, hoverIndex = null) {
+      if (!data || data.length === 0) return;
+      const { ctx, width, height } = setupCanvas('canvas-24m');
+      const colors = getThemeColors();
+      const primaryColor = currentState.customColor24m || '#2563eb';
+
+      const pad = { top: 38, right: 28, bottom: 48, left: 68 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      const maxVal = Math.max(...data.map(d => d.revenue)) * 1.1;
+      const minVal = 0;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = '12px sans-serif';
+
+      const ticks = 5;
+      for (let i = 0; i <= ticks; i++) {
+        const val = minVal + ((maxVal - minVal) / ticks) * i;
+        const y = pad.top + plotH - (i / ticks) * plotH;
+
+        ctx.strokeStyle = colors.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+
+        ctx.fillStyle = colors.muted;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(val / 1000).toLocaleString('zh-TW') + 'k', pad.left - 10, y);
+      }
+
+      const points = data.map((d, i) => {
+        const x = pad.left + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
+        const y = pad.top + plotH - ((d.revenue - minVal) / (maxVal - minVal)) * plotH;
+        return { x, y, ...d };
+      });
+
+      // 漸層填充
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, pad.top + plotH);
+      points.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.lineTo(points[points.length - 1].x, pad.top + plotH);
+      ctx.closePath();
+      ctx.fillStyle = hexToRgba(primaryColor, 0.15);
+      ctx.fill();
+
+      // 折線
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.strokeStyle = primaryColor;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      const step = Math.ceil(data.length / 8);
+      points.forEach((p, i) => {
+        const isHovered = (hoverIndex === i);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, isHovered ? 8 : 4, 0, Math.PI * 2);
+        ctx.fillStyle = isHovered ? colors.highlight : primaryColor;
+        ctx.fill();
+        if (isHovered) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        if (i % step === 0 || i === points.length - 1) {
+          ctx.fillStyle = colors.muted;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(p.month, p.x, pad.top + plotH + 12);
+        }
+      });
+
+      if (hoverIndex === null) {
+        [points[0], points[points.length - 1]].forEach(p => {
+          ctx.fillStyle = colors.text;
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(p.revenue.toLocaleString('zh-TW'), p.x, p.y - 8);
+        });
+      }
+
+      if (hoverIndex !== null && points[hoverIndex]) {
+        const p = points[hoverIndex];
+        
+        ctx.strokeStyle = colors.highlight;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(p.x, pad.top);
+        ctx.lineTo(p.x, pad.top + plotH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const tipText1 = `月份：${p.month}`;
+        const tipText2 = `營收：${formatCurrency(p.revenue)}`;
+        const tipText3 = `年增率：${p.yoyText}`;
+        ctx.font = 'bold 12px sans-serif';
+        const boxW = Math.max(ctx.measureText(tipText2).width, ctx.measureText(tipText3).width) + 24;
+        const boxH = 64;
+        let boxX = p.x - boxW / 2;
+        let boxY = p.y - boxH - 14;
+        if (boxX < pad.left) boxX = pad.left;
+        if (boxX + boxW > pad.left + plotW) boxX = pad.left + plotW - boxW;
+        if (boxY < pad.top) boxY = p.y + 16;
+
+        ctx.fillStyle = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? '#1e293b' : '#ffffff';
+        ctx.strokeStyle = colors.highlight;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+        else ctx.rect(boxX, boxY, boxW, boxH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = colors.highlight;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(tipText1, boxX + 12, boxY + 8);
+        ctx.fillStyle = colors.text;
+        ctx.fillText(tipText2, boxX + 12, boxY + 24);
+        ctx.fillText(tipText3, boxX + 12, boxY + 40);
+      }
+    }
+
+    function drawTxBarChart(data, hoverIndex = null) {
+      if (!data || data.length === 0) return;
+      const { ctx, width, height } = setupCanvas('canvas-tx');
+      const colors = getThemeColors();
+      const primaryColor = currentState.customColorTx || '#2563eb';
+
+      const pad = { top: 38, right: 24, bottom: 48, left: 64 };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      const maxVal = Math.max(...data.map(d => d.netAmount), 100) * 1.15;
+      const minVal = Math.min(0, ...data.map(d => d.netAmount));
+      const range = maxVal - minVal;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.font = '12px sans-serif';
+
+      const ticks = 5;
+      for (let i = 0; i <= ticks; i++) {
+        const val = minVal + (range / ticks) * i;
+        const y = pad.top + plotH - (i / ticks) * plotH;
+
+        ctx.strokeStyle = colors.grid;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.stroke();
+
+        ctx.fillStyle = colors.muted;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(val).toLocaleString('zh-TW'), pad.left - 10, y);
+      }
+
+      const zeroY = pad.top + plotH - ((0 - minVal) / range) * plotH;
+      const slotW = plotW / data.length;
+      const barW = Math.min(80, slotW * 0.55);
+
+      const barRects = data.map((d, i) => {
+        const centerX = pad.left + slotW * i + slotW / 2;
+        const barX = centerX - barW / 2;
+        const valY = pad.top + plotH - ((d.netAmount - minVal) / range) * plotH;
+        const barH = Math.abs(zeroY - valY);
+        const topY = d.netAmount >= 0 ? valY : zeroY;
+        return { centerX, barX, topY, barW, barH: Math.max(barH, 2), ...d, index: i };
+      });
+
+      barRects.forEach((b) => {
+        const isHovered = (hoverIndex === b.index);
+        ctx.fillStyle = isHovered ? colors.highlight : primaryColor;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(b.barX, b.topY, b.barW, b.barH, [8, 8, 0, 0]);
+        else ctx.rect(b.barX, b.topY, b.barW, b.barH);
+        ctx.fill();
+
+        ctx.fillStyle = isHovered ? colors.highlight : colors.text;
+        ctx.font = isHovered ? 'bold 13px sans-serif' : '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`${b.netAmount.toLocaleString('zh-TW')}元`, b.centerX, b.topY - 6);
+
+        ctx.fillStyle = colors.text;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textBaseline = 'top';
+        ctx.fillText(b.region, b.centerX, pad.top + plotH + 12);
+      });
+    }
+
+    // 圖表去背 PNG 下載功能
+    function downloadTransparentPNG(type) {
+      if (!currentState || !currentState.data) return;
+      const exportW = 1200;
+      const exportH = 630;
+      const primaryColor = type === '24m' ? (currentState.customColor24m || '#2563eb') : (currentState.customColorTx || '#2563eb');
+      
+      const canvasObj = document.createElement('canvas');
+      canvasObj.width = exportW;
+      canvasObj.height = exportH;
+      const ctx = canvasObj.getContext('2d');
+      // 背景保持透明（去背）
+
+      const pad = { top: 60, right: 60, bottom: 80, left: 100 };
+      const plotW = exportW - pad.left - pad.right;
+      const plotH = exportH - pad.top - pad.bottom;
+
+      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const textColor = isDark ? '#f8fafc' : '#0f172a';
+      const mutedColor = isDark ? '#94a3b8' : '#475569';
+      const gridColor = isDark ? 'rgba(51, 65, 85, 0.6)' : 'rgba(226, 232, 240, 0.8)';
+
+      if (type === '24m') {
+        const data = currentState.data;
+        const maxVal = Math.max(...data.map(d => d.revenue)) * 1.1;
+        const minVal = 0;
+
+        ctx.font = '14px sans-serif';
+        const ticks = 5;
+        for (let i = 0; i <= ticks; i++) {
+          const val = minVal + ((maxVal - minVal) / ticks) * i;
+          const y = pad.top + plotH - (i / ticks) * plotH;
+
+          ctx.strokeStyle = gridColor;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(pad.left, y);
+          ctx.lineTo(pad.left + plotW, y);
+          ctx.stroke();
+
+          ctx.fillStyle = mutedColor;
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(Math.round(val / 1000).toLocaleString('zh-TW') + 'k 元', pad.left - 16, y);
+        }
+
+        const points = data.map((d, i) => {
+          const x = pad.left + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
+          const y = pad.top + plotH - ((d.revenue - minVal) / (maxVal - minVal)) * plotH;
+          return { x, y, ...d };
+        });
+
+        // 漸層填充
+        const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+        grad.addColorStop(0, hexToRgba(primaryColor, 0.25));
+        grad.addColorStop(1, hexToRgba(primaryColor, 0.0));
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, pad.top + plotH);
+        points.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineTo(points[points.length - 1].x, pad.top + plotH);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // 折線
+        ctx.beginPath();
+        points.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+
+        const step = Math.ceil(data.length / 10);
+        points.forEach((p, i) => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+          ctx.fillStyle = primaryColor;
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          if (i % step === 0 || i === points.length - 1) {
+            ctx.fillStyle = mutedColor;
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(p.month, p.x, pad.top + plotH + 16);
+          }
+        });
+
+        // 標題
+        ctx.fillStyle = textColor;
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('24 個月營收趨勢圖 (Sales Revenue Trend)', pad.left, pad.top - 44);
+
+      } else if (type === 'tx') {
+        const data = currentState.data;
+        const maxVal = Math.max(...data.map(d => d.netAmount), 100) * 1.15;
+        const minVal = Math.min(0, ...data.map(d => d.netAmount));
+        const range = maxVal - minVal;
+
+        ctx.font = '14px sans-serif';
+        const ticks = 5;
+        for (let i = 0; i <= ticks; i++) {
+          const val = minVal + (range / ticks) * i;
+          const y = pad.top + plotH - (i / ticks) * plotH;
+
+          ctx.strokeStyle = gridColor;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(pad.left, y);
+          ctx.lineTo(pad.left + plotW, y);
+          ctx.stroke();
+
+          ctx.fillStyle = mutedColor;
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(Math.round(val).toLocaleString('zh-TW') + ' 元', pad.left - 16, y);
+        }
+
+        const zeroY = pad.top + plotH - ((0 - minVal) / range) * plotH;
+        const slotW = plotW / data.length;
+        const barW = Math.min(90, slotW * 0.55);
+
+        data.forEach((d, i) => {
+          const centerX = pad.left + slotW * i + slotW / 2;
+          const barX = centerX - barW / 2;
+          const valY = pad.top + plotH - ((d.netAmount - minVal) / range) * plotH;
+          const barH = Math.abs(zeroY - valY);
+          const topY = d.netAmount >= 0 ? valY : zeroY;
+
+          ctx.fillStyle = primaryColor;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(barX, topY, barW, Math.max(barH, 2), [8, 8, 0, 0]);
+          else ctx.rect(barX, topY, barW, Math.max(barH, 2));
+          ctx.fill();
+
+          ctx.fillStyle = textColor;
+          ctx.font = 'bold 15px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(`${d.netAmount.toLocaleString('zh-TW')} 元 (${d.count}筆)`, centerX, topY - 10);
+
+          ctx.fillStyle = textColor;
+          ctx.font = 'bold 16px sans-serif';
+          ctx.textBaseline = 'top';
+          ctx.fillText(d.region, centerX, pad.top + plotH + 16);
+        });
+
+        // 標題
+        ctx.fillStyle = textColor;
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('4 月交易明細各區域淨額分佈 (Regional Net Revenue)', pad.left, pad.top - 44);
+      }
+
+      // 觸發下載
+      const link = document.createElement('a');
+      link.download = type === '24m' ? 'sales_24m_trend_transparent.png' : 'sales_transactions_region_transparent.png';
+      link.href = canvasObj.toDataURL('image/png');
+      link.click();
+    }
+
+    document.getElementById('btn-download-24m').addEventListener('click', () => downloadTransparentPNG('24m'));
+    document.getElementById('btn-download-tx').addEventListener('click', () => downloadTransparentPNG('tx'));
+
+    // 顏色選擇器事件綁定
+    document.getElementById('color-picker-24m').addEventListener('input', (e) => {
+      currentState.customColor24m = e.target.value;
+      if (currentState.type === '24m') draw24MChart(currentState.data, currentState.activeHoverIndex);
+    });
+
+    document.getElementById('color-picker-tx').addEventListener('input', (e) => {
+      currentState.customColorTx = e.target.value;
+      if (currentState.type === 'tx') drawTxBarChart(currentState.data, currentState.activeHoverIndex);
+    });
+
+    // 檔案上傳與拖曳監聽
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => processCSVText(evt.target.result, file.name);
+      reader.readAsText(file, 'UTF-8');
+    });
+
+    document.getElementById('btn-sample-24m').addEventListener('click', () => {
+      processCSVText(SAMPLE_24M_CSV, 'sales-24-months.csv (內建範例)');
+    });
+
+    document.getElementById('btn-sample-tx').addEventListener('click', () => {
+      processCSVText(SAMPLE_TX_CSV, 'sales-raw-transactions.csv (內建範例)');
+    });
+
+    // 視窗縮放時重繪圖表
+    window.addEventListener('resize', () => {
+      if (!currentState) return;
+      if (currentState.type === '24m') draw24MChart(currentState.data, currentState.activeHoverIndex);
+      if (currentState.type === 'tx') drawTxBarChart(currentState.data);
+    });
+
+    // 預設載入 4 月交易明細範例以便立即檢視
+    window.onload = function () {
+      processCSVText(SAMPLE_TX_CSV, 'sales-raw-transactions.csv (預設載入範例)');
+    };
+  </script>
+</body>
+</html>
